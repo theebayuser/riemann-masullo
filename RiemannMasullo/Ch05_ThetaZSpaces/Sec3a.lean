@@ -1182,16 +1182,16 @@ The S-local principal value induces the topology of the S-local test space: it i
 on the archimedean factor and a tensor product of endomorphisms of the finite factors, so it is
 a linear self-map of a space whose topology is transported from that tensor decomposition. -/
 private theorem sAdelePrincipalValue_isClosedEmbedding_isInducing {S S₀ : Finset V}
-    (h₀ : S₀ ⊆ S) : IsInducing (sAdelePrincipalValue F h₀) :=
-  (sAdelePrincipalValue_isClosedEmbedding_isInducing_closedEmbedding h₀).isInducing
+    (h₀ : S₀ ⊆ S) : IsInducing (sAdelePrincipalValue F h₀) := by
+  exact (sAdelePrincipalValue_isClosedEmbedding_isInducing_closedEmbedding h₀).isInducing
 
 /-- Paper: Definition 5.3.1.4(1) and Lemma 5.3.1.3, p. 242.
 The image of the S-local principal value is closed: it is the image of the whole archimedean
 factor and of the image of the local principal value in each selected finite place, that is, of
 tests vanishing at the origin there, which is the zero set of a continuous functional. -/
 private theorem sAdelePrincipalValue_isClosedEmbedding_isClosed {S S₀ : Finset V}
-    (h₀ : S₀ ⊆ S) : IsClosed (Set.range (sAdelePrincipalValue F h₀)) :=
-  (sAdelePrincipalValue_isClosedEmbedding_isInducing_closedEmbedding h₀).isClosed_range
+    (h₀ : S₀ ⊆ S) : IsClosed (Set.range (sAdelePrincipalValue F h₀)) := by
+  exact (sAdelePrincipalValue_isClosedEmbedding_isInducing_closedEmbedding h₀).isClosed_range
 
 /-- Paper: Definition 5.3.1.4(1), p. 242.
 The S-local principal value is a topological embedding with closed range. -/
