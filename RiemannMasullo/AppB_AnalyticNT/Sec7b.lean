@@ -545,7 +545,8 @@ theorem reciprocalHeckeEulerProductBelow_at_pole_eq_prod (χ : U[F]) (t₀ x : �
   refine Finset.prod_congr rfl fun v _ ↦ ?_
   have h1 : -((⟨1, t₀⟩ : ℂ) + -Complex.I * t₀) = -1 := by
     apply Complex.ext <;> simp
-  rw [reciprocalHeckeEulerProductBelow_at_pole_eq_prod_factor χ _ hχ, inv_inv, h1, Complex.cpow_neg_one]
+  rw [reciprocalHeckeEulerProductBelow_at_pole_eq_prod_factor χ _ hχ, inv_inv, h1,
+    Complex.cpow_neg_one]
 
 /-- Paper: Remark B.7.2.6, Equation (B.7.2.25), p. 653. Multiplying
 the Mertens product at the pole ordinate by the logarithm of the cutoff gives
