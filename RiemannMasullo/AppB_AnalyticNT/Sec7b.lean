@@ -3,6 +3,7 @@ module
 public import RiemannMasullo.AppB_AnalyticNT.Sec7a
 public import RiemannMasullo.AppB_AnalyticNT.Sec5
 public import Mathlib.NumberTheory.Harmonic.EulerMascheroni
+import RiemannMasullo.ForMathlib.NumberTheory.NumberField.Completion.FinitePlace
 
 /-!
 # Norm-ordered Euler products on the 1-line
@@ -39,7 +40,29 @@ theorem heckePrimePowerTailOscillation_tendsto_at_pole
     (t₀ : ℝ) {n : ℕ} (hn : 0 < n) :
     Tendsto (heckePrimePowerTailOscillation t₀ n)
       (𝓝[≠] (⟨1, t₀⟩ : ℂ)) (𝓝 (Real.log n : ℂ)) := by
-  sorry
+  set w : ℂ := ⟨1, t₀⟩
+  have hn0 : (n : ℂ) ≠ 0 := Nat.cast_ne_zero.mpr hn.ne'
+  have hd := (Complex.hasStrictDerivAt_const_cpow (x := (n : ℂ)) (y := 0)
+    (Or.inl hn0)).hasDerivAt
+  rw [Complex.cpow_zero, one_mul] at hd
+  have hs := hasDerivAt_iff_tendsto_slope.mp hd
+  have hlog : Complex.log (n : ℂ) = (Real.log n : ℂ) := by
+    rw [Complex.ofReal_log (Nat.cast_nonneg n), Complex.ofReal_natCast]
+  rw [hlog] at hs
+  have hmap : Tendsto (fun s : ℂ ↦ w - s) (𝓝[≠] w) (𝓝[≠] 0) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · have : Tendsto (fun s : ℂ ↦ w - s) (𝓝 w) (𝓝 (w - w)) :=
+        tendsto_const_nhds.sub tendsto_id
+      rw [sub_self] at this
+      exact this.mono_left nhdsWithin_le_nhds
+    · filter_upwards [self_mem_nhdsWithin] with s hs
+      exact sub_ne_zero.mpr (Ne.symm hs)
+  refine (hs.comp hmap).congr' ?_
+  filter_upwards [self_mem_nhdsWithin] with s hs
+  have hs' : s ≠ ⟨1, t₀⟩ := hs
+  simp only [Function.comp_apply, slope, sub_zero, Complex.cpow_zero, vsub_eq_sub, smul_eq_mul,
+    heckePrimePowerTailOscillation, hs', ↓reduceIte]
+  ring
 
 /-- Paper: Remark B.7.2.2, p. 649. Index `k` represents the positive
 exponent `k + 1`. The ideal character is zero on ramified prime powers. -/
@@ -52,7 +75,7 @@ the ordinary prime term of the Hecke Dirichlet series. -/
 theorem heckePrimePowerLogTerm_zero (χ : U[F]) (v : V[F]) (s : ℂ) :
     heckePrimePowerLogTerm χ v 0 s =
       heckeIdealValue (ideleClassNormTwist χ 0) v.asIdeal / (v.asIdeal.absNorm : ℂ) ^ s := by
-  sorry
+  simp [heckePrimePowerLogTerm]
 
 /-- Paper: Remark B.7.2.2 and Equation (B.7.2.4), p. 649. Dividing the
 norm-grouped von Mangoldt coefficient by the logarithm of the norm gives
@@ -68,7 +91,47 @@ theorem heckePrimePowerLogCoefficient_eq_sum (χ : U[F]) (n : ℕ) :
       ∑ᶠ a : {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n},
         heckeIdealValue (ideleClassNormTwist χ 0) (a.val.1.asIdeal ^ (a.val.2 + 1)) /
           ((a.val.2 + 1 : ℕ) : ℂ) := by
-  sorry
+  classical
+  let P (a : {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n}) :
+      {I : Ideal (𝓞 F) // I ≠ ⊥ ∧ I.absNorm = n} :=
+    ⟨a.val.1.asIdeal ^ (a.val.2 + 1), pow_ne_zero _ a.val.1.ne_bot, by
+      rw [map_pow]; exact a.property⟩
+  have hP : Function.Injective P := by
+    rintro ⟨⟨v, k⟩, hk⟩ ⟨⟨w, j⟩, hj⟩ he
+    have heq : v.asIdeal ^ (k + 1) = w.asIdeal ^ (j + 1) := congrArg Subtype.val he
+    obtain rfl := HeightOneSpectrum.eq_of_dvd_pow ((dvd_pow_self _ k.succ_ne_zero).trans heq.dvd)
+    exact Subtype.ext (Prod.ext rfl
+      (Nat.succ.inj (pow_injective_of_not_isUnit v.prime.not_isUnit v.ne_bot heq)))
+  have : Finite {I : Ideal (𝓞 F) // I ≠ ⊥ ∧ I.absNorm = n} :=
+    ((Ring.HasFiniteQuotients.finite_absNorm_eq (S := 𝓞 F) n).subset
+      (show {I : Ideal (𝓞 F) | I ≠ ⊥ ∧ I.absNorm = n} ⊆ {I | I.absNorm = n} from
+        fun I hI ↦ hI.2)).to_subtype
+  have : Finite {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n} := Finite.of_injective P hP
+  have : Fintype {I : Ideal (𝓞 F) // I ≠ ⊥ ∧ I.absNorm = n} := Fintype.ofFinite _
+  have : Fintype {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n} := Fintype.ofFinite _
+  rw [heckePrimePowerLogCoefficient, heckeLogDerivCoefficient, finsum_eq_sum_of_fintype,
+    finsum_eq_sum_of_fintype, Finset.sum_div]
+  symm
+  refine Fintype.sum_of_injective P hP _ _ (fun I hI ↦ ?_) (fun a ↦ ?_)
+  · have h : ¬ ∃ v : V[F], ∃ k : ℕ, 0 < k ∧ I.val = v.asIdeal ^ k := by
+      rintro ⟨v, _ | k, hk, he⟩
+      · exact hk.false
+      · refine hI ⟨⟨(v, k), ?_⟩, Subtype.ext he.symm⟩
+        have h2 := I.property.2
+        rw [he, map_pow] at h2
+        exact h2
+    simp [heckeIdealVonMangoldt, idealVonMangoldt, h]
+  · obtain ⟨⟨v, k⟩, hk⟩ := a
+    have hN : (1 : ℝ) < v.asIdeal.absNorm := by
+      exact_mod_cast HeightOneSpectrum.one_lt_absNorm v
+    have hlog : Complex.log (v.asIdeal.absNorm : ℂ) ≠ 0 := by
+      rw [← Complex.ofReal_natCast, ← Complex.ofReal_log (Nat.cast_nonneg _)]
+      exact Complex.ofReal_ne_zero.mpr (Real.log_pos hN).ne'
+    have hk1 : ((k : ℂ) + 1) ≠ 0 := by exact_mod_cast Nat.succ_ne_zero k
+    simp only [P, heckeIdealVonMangoldt, idealVonMangoldt_prime_pow v k.succ_pos]
+    rw [← hk, Nat.cast_pow, Real.log_pow]
+    push_cast
+    field_simp
 
 /-- Paper: Remark B.7.2.2, p. 649. This is the Dirichlet term for each
 integer norm, with the terms below the cutoff replaced by zero. -/
@@ -80,7 +143,7 @@ cutoff, the tail includes the full Dirichlet term for that norm. -/
 theorem heckePrimePowerLogTailTerm_at_cutoff (χ : U[F]) (s : ℂ) {n : ℕ} (hn : 0 < n) :
     heckePrimePowerLogTailTerm χ n s n =
       heckePrimePowerLogCoefficient χ n / (n : ℂ) ^ s := by
-  sorry
+  simp [heckePrimePowerLogTailTerm, LSeries.term_of_ne_zero hn.ne']
 
 /-- Paper: Remark B.7.2.2, p. 649. The logarithmic tail sums the norm-grouped
 terms in increasing order of integer norm, starting at the first norm at least `x`. -/
@@ -164,7 +227,9 @@ def heckePrimesBelow (F : Type*) [Field F] [NumberField F] (x : ℝ) : Finset (V
 norm exactly `x`, including when `x` is an integer. -/
 theorem heckePrimesBelow_mem_iff (v : V[F]) (x : ℝ) :
     v ∈ heckePrimesBelow F x ↔ (v.asIdeal.absNorm : ℝ) < x := by
-  sorry
+  have h1 : 1 < v.asIdeal.absNorm := HeightOneSpectrum.one_lt_absNorm v
+  rw [heckePrimesBelow, Set.Finite.mem_toFinset, Set.mem_ofPred_eq, ← Nat.lt_ceil]
+  omega
 
 /-- Paper: Corollary B.7.2.3, p. 651. For a character nontrivial on the
 norm-one subgroup, the prime sum converges locally uniformly on the 1-line. -/
@@ -199,7 +264,12 @@ theorem reciprocalHeckeEulerProductBelow_eq_prod (χ : U[F]) (x : ℝ) (s : ℂ)
       ∏ v ∈ heckePrimesBelow F x,
         (1 - heckeIdealValue (ideleClassNormTwist χ 0) v.asIdeal *
           (v.asIdeal.absNorm : ℂ) ^ (-s)) := by
-  sorry
+  classical
+  refine Finset.prod_congr rfl fun v _ ↦ ?_
+  have h := heckeIdealValue_prime_pow (ideleClassNormTwist χ 0) v one_pos
+  rw [pow_one] at h
+  rw [h, finiteHeckeEulerFactor]
+  split_ifs <;> simp
 
 /-- Paper: Equation (B.7.2.19), p. 652. This is the oscillatory part of
 the logarithmic tail for a pure norm character, evaluated at ordinate `t`.
@@ -249,7 +319,44 @@ theorem summable_heckeHigherPrimePowerWeights (F : Type*) [Field F] [NumberField
     {σ : ℝ} (hσ : 1 / 2 < σ) :
     Summable (fun a : V[F] × ℕ ↦
       (1 : ℝ) / ((a.2 + 2 : ℕ) * (((a.1.asIdeal.absNorm ^ (a.2 + 2) : ℕ) : ℝ) ^ σ))) := by
-  sorry
+  have hσ0 : 0 < σ := by linarith
+  have hu : Summable fun v : V[F] ↦ (v.asIdeal.absNorm : ℝ) ^ (-(2 * σ)) :=
+    (summable_absNorm_rpow F (by linarith)).comp_injective
+      (fun _ _ he ↦ HeightOneSpectrum.ext he)
+  have hr0 : 0 ≤ (2 : ℝ) ^ (-σ) := Real.rpow_nonneg (by norm_num) _
+  have hr1 : (2 : ℝ) ^ (-σ) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+  have hg : Summable fun k : ℕ ↦ ((2 : ℝ) ^ (-σ)) ^ k := summable_geometric_of_lt_one hr0 hr1
+  refine Summable.of_nonneg_of_le (fun a ↦ by positivity) (fun a ↦ ?_)
+    (hu.mul_of_nonneg hg (fun v ↦ Real.rpow_nonneg (Nat.cast_nonneg _) _)
+      (fun k ↦ pow_nonneg hr0 k))
+  obtain ⟨v, k⟩ := a
+  dsimp only
+  have hN : (2 : ℝ) ≤ v.asIdeal.absNorm := by exact_mod_cast HeightOneSpectrum.one_lt_absNorm v
+  have hN0 : (0 : ℝ) < v.asIdeal.absNorm := by linarith
+  have hpow : ((v.asIdeal.absNorm ^ (k + 2) : ℕ) : ℝ) ^ σ =
+      (v.asIdeal.absNorm : ℝ) ^ (2 * σ) * ((v.asIdeal.absNorm : ℝ) ^ σ) ^ k := by
+    rw [Nat.cast_pow, ← Real.rpow_natCast, ← Real.rpow_mul hN0.le, ← Real.rpow_natCast (_ ^ σ),
+      ← Real.rpow_mul hN0.le, ← Real.rpow_add hN0]
+    congr 1
+    push_cast
+    ring
+  rw [hpow]
+  have hA : 0 < (v.asIdeal.absNorm : ℝ) ^ (2 * σ) := Real.rpow_pos_of_pos hN0 _
+  have hB : 0 < ((2 : ℝ) ^ σ) ^ k := pow_pos (Real.rpow_pos_of_pos (by norm_num) _) k
+  have hle : ((2 : ℝ) ^ σ) ^ k ≤ ((v.asIdeal.absNorm : ℝ) ^ σ) ^ k :=
+    pow_le_pow_left₀ (Real.rpow_nonneg (by norm_num) _)
+      (Real.rpow_le_rpow (by norm_num) hN hσ0.le) k
+  have h1 : (1 : ℝ) ≤ ((k + 2 : ℕ) : ℝ) := by exact_mod_cast (by omega : 1 ≤ k + 2)
+  calc 1 / (((k + 2 : ℕ) : ℝ) *
+        ((v.asIdeal.absNorm : ℝ) ^ (2 * σ) * ((v.asIdeal.absNorm : ℝ) ^ σ) ^ k))
+      ≤ 1 / ((v.asIdeal.absNorm : ℝ) ^ (2 * σ) * ((2 : ℝ) ^ σ) ^ k) := by
+        apply one_div_le_one_div_of_le (mul_pos hA hB)
+        calc (v.asIdeal.absNorm : ℝ) ^ (2 * σ) * ((2 : ℝ) ^ σ) ^ k
+            ≤ (v.asIdeal.absNorm : ℝ) ^ (2 * σ) * ((v.asIdeal.absNorm : ℝ) ^ σ) ^ k :=
+              mul_le_mul_of_nonneg_left hle hA.le
+          _ ≤ _ := le_mul_of_one_le_left (by positivity) h1
+    _ = (v.asIdeal.absNorm : ℝ) ^ (-(2 * σ)) * ((2 : ℝ) ^ (-σ)) ^ k := by
+        rw [Real.rpow_neg hN0.le, Real.rpow_neg (by norm_num), inv_pow, one_div, mul_inv]
 
 /-- Paper: Theorem B.7.2.4(1), p. 652. The series defining the correction
 converges absolutely and uniformly on half-planes strictly to the right of one half.
@@ -389,6 +496,40 @@ theorem heckeEulerProductBelow_tendstoLocallyUniformlyOn_normTwist (χ : U[F]) (
       (fun t : ℝ ↦ L ⟨1, t⟩) atTop ({t₀}ᶜ : Set ℝ) := by
   sorry
 
+/-- The finite Euler factor of a norm twist of the trivial character at `s` is the
+reciprocal of `1 - N(v)^(-(s + a))`. -/
+private theorem reciprocalHeckeEulerProductBelow_at_pole_eq_prod_factor (χ : U[F]) (a : ℂ)
+    (hχ : ideleClassNormTwist χ 0 = ideleClassNormTwist (1 : U[F]) a) (v : V[F]) (s : ℂ) :
+    finiteHeckeEulerFactor χ v s = (1 - (v.asIdeal.absNorm : ℂ) ^ (-(s + a)))⁻¹ := by
+  classical
+  have hval (u : (v.adicCompletion F)ˣ) :
+      (ideleClassNormTwist (1 : U[F]) a).restrict v u =
+        (‖(u : v.adicCompletion F)‖ : ℂ) ^ a := by
+    rw [HeckeCharacter.restrict, MulChar.ofUnitHom_coe]
+    change 1 * (((ideleClassNorm F (IdeleClassGroup.ofAdicCompletion (𝓞 F) F v u) : NNReal) :
+      ℝ) : ℂ) ^ a = _
+    rw [one_mul, ideleClassNorm_ofAdicCompletion]
+    rfl
+  have hu : (ideleClassNormTwist (1 : U[F]) a).IsUnramifiedAt v := by
+    apply HeckeCharacter.isUnramifiedAt_iff.mpr
+    intro x
+    let u := Units.map (v.adicCompletionIntegers F).subtype.toMonoidHom x
+    change (ideleClassNormTwist (1 : U[F]) a).restrict v u = 1
+    rw [hval u, show ‖(u : v.adicCompletion F)‖ = 1 from ?_, Complex.ofReal_one, Complex.one_cpow]
+    apply Valued.toNormedField.norm_eq_one_iff.mpr
+    exact HeightOneSpectrum.adicCompletionIntegers.mem_units_iff_valued_eq_one.mp
+      (show u ∈ (v.adicCompletionIntegers F).units from ⟨x.val.property, x.inv.property⟩)
+  let val : Valuation (v.adicCompletion F) (WithZero (Multiplicative ℤ)) := Valued.v
+  obtain ⟨π, hπ⟩ := val.exists_isUniformizer_of_isCyclic_of_nontrivial
+  let u := Units.mk0 (π : v.adicCompletion F) hπ.ne_zero
+  have hnorm : ‖(u : v.adicCompletion F)‖ = (v.asIdeal.absNorm : ℝ)⁻¹ :=
+    norm_uniformizer_adicCompletion v _ hπ
+  have hN : (v.asIdeal.absNorm : ℂ) ≠ 0 := by
+    exact_mod_cast (zero_lt_one.trans (HeightOneSpectrum.one_lt_absNorm v)).ne'
+  rw [finiteHeckeEulerFactor, hχ, ite_eq_left hu, hu.localValue_eq u hπ, hval, hnorm,
+    Complex.ofReal_inv, Complex.inv_cpow_ofReal_nonneg (Nat.cast_nonneg _) a,
+    ← Complex.cpow_neg, Complex.ofReal_natCast, ← Complex.cpow_add _ _ hN, neg_add, add_comm (-a)]
+
 /-- Paper: Remark B.7.2.6, Equation (B.7.2.25), p. 653. At the pole
 ordinate the reciprocal product for a pure norm character equals the untwisted
 Mertens product. -/
@@ -396,7 +537,10 @@ theorem reciprocalHeckeEulerProductBelow_at_pole_eq_prod (χ : U[F]) (t₀ x : �
     (hχ : ideleClassNormTwist χ 0 = ideleClassNormTwist (1 : U[F]) (-Complex.I * t₀)) :
     reciprocalHeckeEulerProductBelow χ x ⟨1, t₀⟩ =
       ∏ v ∈ heckePrimesBelow F x, (1 - (v.asIdeal.absNorm : ℂ)⁻¹) := by
-  sorry
+  refine Finset.prod_congr rfl fun v _ ↦ ?_
+  have h1 : -((⟨1, t₀⟩ : ℂ) + -Complex.I * t₀) = -1 := by
+    apply Complex.ext <;> simp
+  rw [reciprocalHeckeEulerProductBelow_at_pole_eq_prod_factor χ _ hχ, inv_inv, h1, Complex.cpow_neg_one]
 
 /-- Paper: Remark B.7.2.6, Equation (B.7.2.25), p. 653. Multiplying
 the Mertens product at the pole ordinate by the logarithm of the cutoff gives
