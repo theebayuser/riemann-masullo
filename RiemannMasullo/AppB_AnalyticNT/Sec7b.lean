@@ -60,8 +60,9 @@ theorem heckePrimePowerTailOscillation_tendsto_at_pole
   refine (hs.comp hmap).congr' ?_
   filter_upwards [self_mem_nhdsWithin] with s hs
   have hs' : s ≠ ⟨1, t₀⟩ := hs
+  delta heckePrimePowerTailOscillation
   simp only [Function.comp_apply, slope, sub_zero, Complex.cpow_zero, vsub_eq_sub, smul_eq_mul,
-    heckePrimePowerTailOscillation, hs', ↓reduceIte]
+    hs', ↓reduceIte]
   ring
 
 /-- Paper: Remark B.7.2.2, p. 649. Index `k` represents the positive
@@ -75,7 +76,8 @@ the ordinary prime term of the Hecke Dirichlet series. -/
 theorem heckePrimePowerLogTerm_zero (χ : U[F]) (v : V[F]) (s : ℂ) :
     heckePrimePowerLogTerm χ v 0 s =
       heckeIdealValue (ideleClassNormTwist χ 0) v.asIdeal / (v.asIdeal.absNorm : ℂ) ^ s := by
-  simp [heckePrimePowerLogTerm]
+  delta heckePrimePowerLogTerm
+  simp
 
 /-- Paper: Remark B.7.2.2 and Equation (B.7.2.4), p. 649. Dividing the
 norm-grouped von Mangoldt coefficient by the logarithm of the norm gives
@@ -109,7 +111,8 @@ theorem heckePrimePowerLogCoefficient_eq_sum (χ : U[F]) (n : ℕ) :
   have : Finite {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n} := Finite.of_injective P hP
   have : Fintype {I : Ideal (𝓞 F) // I ≠ ⊥ ∧ I.absNorm = n} := Fintype.ofFinite _
   have : Fintype {a : V[F] × ℕ // a.1.asIdeal.absNorm ^ (a.2 + 1) = n} := Fintype.ofFinite _
-  rw [heckePrimePowerLogCoefficient, heckeLogDerivCoefficient, finsum_eq_sum_of_fintype,
+  delta heckePrimePowerLogCoefficient heckeLogDerivCoefficient
+  rw [finsum_eq_sum_of_fintype,
     finsum_eq_sum_of_fintype, Finset.sum_div]
   symm
   refine Fintype.sum_of_injective P hP _ _ (fun I hI ↦ ?_) (fun a ↦ ?_)
@@ -143,7 +146,8 @@ cutoff, the tail includes the full Dirichlet term for that norm. -/
 theorem heckePrimePowerLogTailTerm_at_cutoff (χ : U[F]) (s : ℂ) {n : ℕ} (hn : 0 < n) :
     heckePrimePowerLogTailTerm χ n s n =
       heckePrimePowerLogCoefficient χ n / (n : ℂ) ^ s := by
-  simp [heckePrimePowerLogTailTerm, LSeries.term_of_ne_zero hn.ne']
+  delta heckePrimePowerLogTailTerm
+  simp [LSeries.term_of_ne_zero hn.ne']
 
 /-- Paper: Remark B.7.2.2, p. 649. The logarithmic tail sums the norm-grouped
 terms in increasing order of integer norm, starting at the first norm at least `x`. -/
@@ -228,7 +232,8 @@ norm exactly `x`, including when `x` is an integer. -/
 theorem heckePrimesBelow_mem_iff (v : V[F]) (x : ℝ) :
     v ∈ heckePrimesBelow F x ↔ (v.asIdeal.absNorm : ℝ) < x := by
   have h1 : 1 < v.asIdeal.absNorm := HeightOneSpectrum.one_lt_absNorm v
-  rw [heckePrimesBelow, Set.Finite.mem_toFinset, Set.mem_ofPred_eq, ← Nat.lt_ceil]
+  delta heckePrimesBelow
+  rw [Set.Finite.mem_toFinset, Set.mem_ofPred_eq, ← Nat.lt_ceil]
   omega
 
 /-- Paper: Corollary B.7.2.3, p. 651. For a character nontrivial on the
