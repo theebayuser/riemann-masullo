@@ -611,13 +611,72 @@ theorem sAdeleNormOneOrbitUnion_locallyCompactSpace :
     LocallyCompactSpace (sAdeleNormOneOrbitUnion F S) := by
   sorry
 
+/-- The finite base points tend to `1` along the cofinite filter. They lie in the image
+of the integral finite adeles, where the restricted product carries the product topology. -/
+private theorem adeleNormOneOrbitUnion_locallyCompactSpace_tendsto :
+    Filter.Tendsto (fun v ↦ adeleOrbitBasepoint F (some (.inr v))) Filter.cofinite (𝓝 1) := by
+  classical
+  have hx (v u : HeightOneSpectrum (𝓞 F)) :
+      Pi.mulSingle (M := fun u : HeightOneSpectrum (𝓞 F) ↦ u.adicCompletion F) v 0 u ∈
+        u.adicCompletionIntegers F := by
+    by_cases h : u = v
+    · subst h
+      rw [Pi.mulSingle_eq_same]
+      exact zero_mem _
+    · rw [Pi.mulSingle_eq_of_ne h]
+      exact one_mem _
+  let x : HeightOneSpectrum (𝓞 F) → (u : HeightOneSpectrum (𝓞 F)) →
+      (u.adicCompletionIntegers F : Set (u.adicCompletion F)) := fun v u ↦ ⟨_, hx v u⟩
+  let x₁ : (u : HeightOneSpectrum (𝓞 F)) →
+      (u.adicCompletionIntegers F : Set (u.adicCompletion F)) := fun u ↦ ⟨1, one_mem _⟩
+  have hxt : Filter.Tendsto x Filter.cofinite (𝓝 x₁) := by
+    refine tendsto_pi_nhds.mpr fun u ↦ tendsto_const_nhds.congr' ?_
+    filter_upwards [Filter.eventually_cofinite_ne u] with v hv
+    exact Subtype.ext (Pi.mulSingle_eq_of_ne (Ne.symm hv) _).symm
+  have hs := RestrictedProduct.isEmbedding_structureMap
+    (R := fun v : HeightOneSpectrum (𝓞 F) ↦ v.adicCompletion F)
+    (A := fun v ↦ (v.adicCompletionIntegers F : Set (v.adicCompletion F)))
+    (𝓕 := Filter.cofinite)
+  exact Prod.tendsto_iff _ _ |>.mpr ⟨tendsto_const_nhds, (hs.continuous.tendsto x₁).comp hxt⟩
+
+/-- The set of base points is locally compact. It is compact, because the finite base
+points tend to `1` and there are only finitely many infinite places. -/
+private theorem adeleNormOneOrbitUnion_locallyCompactSpace_basepoints :
+    LocallyCompactSpace (adeleOrbitBasepoints F) := by
+  have := t2Space_adeleRing F
+  have h1 :=
+    (adeleNormOneOrbitUnion_locallyCompactSpace_tendsto F).isCompact_insert_range_of_cofinite
+  have h2 :
+      IsCompact (Set.range fun w : InfinitePlace F ↦ adeleOrbitBasepoint F (some (.inl w))) :=
+    (Set.finite_range _).isCompact
+  have hc : IsCompact (adeleOrbitBasepoints F) := by
+    convert h1.union h2 using 1
+    ext x
+    constructor
+    · rintro ⟨i, rfl⟩
+      rcases i with _ | w | v
+      · exact Or.inl (Set.mem_insert _ _)
+      · exact Or.inr ⟨w, rfl⟩
+      · exact Or.inl (Set.mem_insert_of_mem _ ⟨v, rfl⟩)
+    · rintro ((rfl | ⟨v, rfl⟩) | ⟨w, rfl⟩)
+      · exact ⟨none, rfl⟩
+      · exact ⟨_, rfl⟩
+      · exact ⟨_, rfl⟩
+  have := isCompact_iff_compactSpace.mp hc
+  infer_instance
+
 /-- Paper: Lemma 8.2.0.3, p. 385. The global norm-one orbit union is locally compact
 in the quotient topology of the orbit map.
 Deviation: The adelic subspace topology fails to be locally compact by ERRATA R13. -/
 theorem adeleNormOneOrbitUnion_locallyCompactSpace :
     @LocallyCompactSpace (adeleNormOneOrbitUnion F)
       (TopologicalSpace.coinduced (adeleNormOneOrbitMap F) inferInstance) := by
-  sorry
+  have := (ideleGroup_topology F).2.1
+  have : LocallyCompactSpace N₁ := (ideleGroup_topology F).2.2.2.2.2.locallyCompactSpace
+  have := adeleNormOneOrbitUnion_locallyCompactSpace_basepoints F
+  exact @IsOpenQuotientMap.locallyCompactSpace _ _ _
+    (TopologicalSpace.coinduced (adeleNormOneOrbitMap F) inferInstance) _ _
+    (adeleNormOneOrbitMap_isOpenQuotientMap F)
 
 /-- Paper: Lemma 8.2.0.3, p. 385. The S-local norm-one orbit union is σ-compact. -/
 theorem sAdeleNormOneOrbitUnion_sigmaCompactSpace :
